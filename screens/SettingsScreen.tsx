@@ -693,7 +693,7 @@ export default function SettingsScreen() {
                 <Text
                   style={[styles.appDeveloper, { color: theme.textSecondary }]}
                 >
-                  by MD H R ALIF
+                  Alfey Sani
                 </Text>
               </View>
             </View>
