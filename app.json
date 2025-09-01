@@ -1,0 +1,10 @@
+{
+  "expo": {
+    
+    "android": {},
+    "ios": {},
+    "plugins": [
+      "expo-font"
+    ]
+  }
+}
