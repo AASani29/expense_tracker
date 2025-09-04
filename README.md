@@ -13,7 +13,7 @@ A modern, feature-rich mobile expense tracking application built with React Nati
 - **Expense Details**: View comprehensive details of individual expenses
 - **Search & Filter**: Find specific expenses using the built-in search functionality
 
-_📸 [Add screenshot: Expense list, Add expense form, Expense details]_
+
 
 ### 📊 **Statistics & Analytics**
 
@@ -23,7 +23,7 @@ _📸 [Add screenshot: Expense list, Add expense form, Expense details]_
 - **Budget Progress**: Monitor your budget usage with progress indicators
 - **Total Spending**: Get quick overviews of your total expenses
 
-_📸 [Add screenshot: Statistics dashboard, Category breakdown, Monthly trends]_
+
 
 ### 🎨 **Customization & Themes**
 
@@ -32,7 +32,7 @@ _📸 [Add screenshot: Statistics dashboard, Category breakdown, Monthly trends]
 - **Default Categories**: Set preferred expense categories for quick entry
 - **Personalized Experience**: Customize the app to match your preferences
 
-_📸 [Add screenshot: Currency selection, Theme toggle, Settings page]_
+
 
 ### 🛡️ **Security & Privacy**
 
@@ -41,16 +41,16 @@ _📸 [Add screenshot: Currency selection, Theme toggle, Settings page]_
 - **Local Data Storage**: All data stored securely on your device using SQLite
 - **Secure Settings**: Sensitive information protected with Expo SecureStore
 
-_📸 [Add screenshot: PIN setup, Biometric login, Security settings]_
+
 
 ### 💰 **Budget Management**
 
 - **Monthly Budget Setting**: Set and track monthly spending budgets
-- **Budget Alerts**: Get notified when approaching budget limits
-- **Progress Tracking**: Visual indicators show budget usage percentage
-- **Budget History**: Track budget performance over time
+- **Budget Progress Tracking**: Visual indicators show budget usage percentage
+- **Budget Monitoring**: Keep track of spending against your set budget limits
+- **Budget History**: Monitor budget performance over time
 
-_📸 [Add screenshot: Budget setup, Budget progress, Budget alerts]_
+
 
 ### 📂 **Data Management**
 
@@ -59,7 +59,7 @@ _📸 [Add screenshot: Budget setup, Budget progress, Budget alerts]_
 - **Clear Data**: Option to reset all data when needed
 - **Data Integrity**: Robust database management ensures data consistency
 
-_📸 [Add screenshot: Export/Import interface, Data management options]_
+
 
 ## 🛠️ Tech Stack
 
@@ -92,10 +92,6 @@ _📸 [Add screenshot: Export/Import interface, Data management options]_
 - **@react-native-community/datetimepicker (^8.4.4)** - Date/time selection
 - **@react-native-picker/picker (^2.11.1)** - Dropdown selections
 - **Custom Theme System** - Dynamic light/dark theme switching
-
-### **Notifications**
-
-- **expo-notifications (^0.31.4)** - Budget alerts and reminders _(Note: Limited in Expo Go)_
 
 ### **Development Tools**
 
