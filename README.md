@@ -2,21 +2,7 @@
 
 A modern, feature-rich mobile expense tracking application built with React Native and Expo. Keep track of your spending, monitor budgets, and gain insights into your financial habits with an intuitive and secure interface.
 
-## 📸 Screenshots
 
-<div align="center">
-  <img src="screenshots/Expenses.jpg" width="200" alt="Home Screen" />
-  <img src="screenshots/addexpense.jpg" width="200" alt="Add Expense" />
-  <img src="screenshots/stats.jpg" width="200" alt="Statistics" />
-  <img src="screenshots/settings.jpg" width="200" alt="Settings" />
-</div>
-
-<div align="center">
-  <img src="screenshots/expensedetails.jpg" width="200" alt="Expense Details" />
-  <img src="screenshots/budget.jpg" width="200" alt="Budget Management" />
-  <img src="screenshots/currency_selection.jpg" width="200" alt="Currency Selection" />
-  <img src="screenshots/security_features.jpg" width="200" alt="Security Features" />
-</div>
 
 ## 📱 Features
 
@@ -30,10 +16,10 @@ A modern, feature-rich mobile expense tracking application built with React Nati
 - **Search & Filter**: Find specific expenses using the built-in search functionality
 
 <div align="center">
-  <img src="screenshots/Expenses.jpg" width="250" alt="Expenses Screen" />
-  <img src="screenshots/addexpense.jpg" width="250" alt="Add Expense Screen" />
-  <img src="screenshots/expensedetails.jpg" width="250" alt="Expense Details Screen" />
-  <img src="screenshots/search.jpg" width="250" alt="Search Functionality" />
+  <img src="screenshots/Expenses.jpg" width="180" alt="Expenses Screen" />
+  <img src="screenshots/addexpense.jpg" width="180" alt="Add Expense Screen" />
+  <img src="screenshots/expensedetails.jpg" width="180" alt="Expense Details Screen" />
+  <img src="screenshots/search.jpg" width="180" alt="Search Functionality" />
 </div>
 
 
@@ -47,8 +33,8 @@ A modern, feature-rich mobile expense tracking application built with React Nati
 - **Total Spending**: Get quick overviews of your total expenses
 
 <div align="center">
-  <img src="screenshots/stats.jpg" width="250" alt="Statistics Screen" />
-  <img src="screenshots/budget.jpg" width="250" alt="Budget Management" />
+  <img src="screenshots/stats.jpg" width="180" alt="Statistics Screen" />
+  <img src="screenshots/budget.jpg" width="180" alt="Budget Management" />
 </div>
 
 
@@ -61,10 +47,9 @@ A modern, feature-rich mobile expense tracking application built with React Nati
 - **Personalized Experience**: Customize the app to match your preferences
 
 <div align="center">
-  <img src="screenshots/settings_lightmode.jpg" width="250" alt="Light Mode Settings" />
-  <img src="screenshots/setings_darkmode.jpg" width="250" alt="Dark Mode Settings" />
-  <img src="screenshots/currency_selection.jpg" width="250" alt="Currency Selection" />
-  <img src="screenshots/category.jpg" width="250" alt="Category Selection" />
+  <img src="screenshots/settings_lightmode.jpg" width="180" alt="Light Mode Settings" />
+  <img src="screenshots/setings_darkmode.jpg" width="180" alt="Dark Mode Settings" />
+  <img src="screenshots/currency_selection.jpg" width="180" alt="Currency Selection" />
 </div>
 
 
@@ -77,8 +62,8 @@ A modern, feature-rich mobile expense tracking application built with React Nati
 - **Secure Settings**: Sensitive information protected with Expo SecureStore
 
 <div align="center">
-  <img src="screenshots/security_features.jpg" width="250" alt="Security Features" />
-  <img src="screenshots/settings.jpg" width="250" alt="Settings Screen" />
+  <img src="screenshots/security_features.jpg" width="180" alt="Security Features" />
+  <img src="screenshots/about.jpg" width="180" alt="About & Support" />
 </div>
 
 
@@ -91,23 +76,10 @@ A modern, feature-rich mobile expense tracking application built with React Nati
 - **Budget History**: Monitor budget performance over time
 
 <div align="center">
-  <img src="screenshots/budget.jpg" width="250" alt="Budget Management" />
-  <img src="screenshots/stats.jpg" width="250" alt="Budget Statistics" />
+  <img src="screenshots/budget.jpg" width="180" alt="Budget Management" />
+  <img src="screenshots/stats.jpg" width="180" alt="Budget Statistics" />
 </div>
 
-
-
-### 📂 **Data Management**
-
-- **Export Data**: Export all expense data in JSON format for backup
-- **Import Data**: Restore expenses from exported backup files
-- **Clear Data**: Option to reset all data when needed
-- **Data Integrity**: Robust database management ensures data consistency
-
-<div align="center">
-  <img src="screenshots/settings.jpg" width="250" alt="Data Management Settings" />
-  <img src="screenshots/about.jpg" width="250" alt="About & Support" />
-</div>
 
 
 
