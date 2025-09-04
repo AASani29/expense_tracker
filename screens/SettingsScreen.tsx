@@ -18,6 +18,7 @@ import {
   Dimensions,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useApp } from "../context/AppContext";
 import {
   CURRENCIES,
@@ -437,6 +438,17 @@ export default function SettingsScreen({
     );
   };
 
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: "Check out EXPEN$IO - A smart expense tracker that helps you manage your finances better!",
+        title: "EXPEN$IO - Smart Expense Tracker",
+      });
+    } catch (error) {
+      console.error("Error sharing:", error);
+    }
+  };
+
   const handleBudgetToggle = async (enabled: boolean) => {
     try {
       await settingsService.setBudgetEnabled(enabled);
@@ -566,11 +578,19 @@ export default function SettingsScreen({
       showsVerticalScrollIndicator={false}
     >
       {/* Header Section */}
-      <View style={[styles.headerSection, { backgroundColor: theme.accent }]}>
+      <View style={[styles.headerSection, { backgroundColor: theme.background }]}>
         <View style={styles.headerContent}>
-          <AntDesign name="setting" size={32} color="white" />
-          <Text style={styles.headerTitle}>Settings</Text>
-          <Text style={styles.headerSubtitle}>Customize your experience</Text>
+          <View style={styles.headerTopRow}>
+            <View style={styles.headerTitleContainer}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
+                Manage your preferences
+              </Text>
+            </View>
+            <View style={[styles.headerIconContainer, { backgroundColor: theme.accent + '15' }]}>
+              <AntDesign name="setting" size={24} color={theme.accent} />
+            </View>
+          </View>
         </View>
       </View>
 
@@ -865,15 +885,16 @@ export default function SettingsScreen({
           </View>
         </View>
 
-        {/* About Section */}
+        {/* About & Support Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <AntDesign name="info" size={20} color={theme.accent} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              About
+              About & Support
             </Text>
           </View>
 
+          {/* App Info Card */}
           <View
             style={[
               styles.aboutCard,
@@ -890,11 +911,11 @@ export default function SettingsScreen({
                   { backgroundColor: theme.accent },
                 ]}
               >
-                <AntDesign name="wallet" size={32} color="white" />
+                <Text style={styles.appIconText}>E$</Text>
               </View>
               <View style={styles.aboutTextContainer}>
                 <Text style={[styles.appName, { color: theme.text }]}>
-                  Expense Tracker
+                  EXPEN$IO
                 </Text>
                 <Text
                   style={[styles.appVersion, { color: theme.textSecondary }]}
@@ -904,23 +925,160 @@ export default function SettingsScreen({
                 <Text
                   style={[styles.appDeveloper, { color: theme.textSecondary }]}
                 >
-                  Alfey Sani
+                  Developed by Alfey Sani
                 </Text>
               </View>
             </View>
+            
+            {/* App Stats */}
             <View
               style={[styles.statsContainer, { borderTopColor: theme.border }]}
             >
-              <View style={styles.statItem}>
-                <Text style={[styles.statNumber, { color: theme.accent }]}>
-                  {expenses.length}
-                </Text>
-                <Text
-                  style={[styles.statLabel, { color: theme.textSecondary }]}
-                >
-                  Total Expenses
-                </Text>
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={[styles.statNumber, { color: theme.accent }]}>
+                    {expenses.length}
+                  </Text>
+                  <Text
+                    style={[styles.statLabel, { color: theme.textSecondary }]}
+                  >
+                    Total Expenses
+                  </Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View style={styles.statItem}>
+                  <Text style={[styles.statNumber, { color: theme.accent }]}>
+                    {expenses.length > 0 ? 
+                      Math.round(expenses.reduce((sum, exp) => sum + exp.amount, 0)) : 0}
+                  </Text>
+                  <Text
+                    style={[styles.statLabel, { color: theme.textSecondary }]}
+                  >
+                    Total Amount
+                  </Text>
+                </View>
               </View>
+            </View>
+          </View>
+
+          {/* Support Actions */}
+          <View style={styles.supportActions}>
+            <View style={styles.supportRow}>
+              <TouchableOpacity
+                style={[
+                  styles.supportCard,
+                  {
+                    backgroundColor: theme.cardBackground,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={() => {
+                  Alert.alert(
+                    "Rate EXPEN$IO",
+                    "Thank you for using EXPEN$IO! Your feedback helps us improve.",
+                    [
+                      { text: "Maybe Later", style: "cancel" },
+                      { text: "Rate Now", onPress: () => console.log("Rate app") },
+                    ]
+                  );
+                }}
+              >
+                <View style={[styles.supportIcon, { backgroundColor: '#FFD700' + '20' }]}>
+                  <AntDesign name="star" size={20} color="#FFD700" />
+                </View>
+                <Text style={[styles.supportTitle, { color: theme.text }]}>
+                  Rate App
+                </Text>
+                <Text style={[styles.supportSubtitle, { color: theme.textSecondary }]}>
+                  Love it? Rate us!
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.supportCard,
+                  {
+                    backgroundColor: theme.cardBackground,
+                    borderColor: theme.border,
+                  },
+                ]}
+                onPress={handleShare}
+              >
+                <View style={[styles.supportIcon, { backgroundColor: '#4CAF50' + '20' }]}>
+                  <AntDesign name="sharealt" size={20} color="#4CAF50" />
+                </View>
+                <Text style={[styles.supportTitle, { color: theme.text }]}>
+                  Share App
+                </Text>
+                <Text style={[styles.supportSubtitle, { color: theme.textSecondary }]}>
+                  Tell your friends
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.feedbackCard,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.border,
+                },
+              ]}
+              onPress={() => {
+                Alert.alert(
+                  "Send Feedback",
+                  "We'd love to hear from you! Send us your thoughts, suggestions, or report issues.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Send Email", onPress: () => console.log("Open email") },
+                  ]
+                );
+              }}
+            >
+              <View style={styles.feedbackContent}>
+                <View style={[styles.feedbackIcon, { backgroundColor: '#2196F3' + '20' }]}>
+                  <AntDesign name="mail" size={20} color="#2196F3" />
+                </View>
+                <View style={styles.feedbackText}>
+                  <Text style={[styles.feedbackTitle, { color: theme.text }]}>
+                    Send Feedback
+                  </Text>
+                  <Text style={[styles.feedbackSubtitle, { color: theme.textSecondary }]}>
+                    Help us improve by sharing your thoughts
+                  </Text>
+                </View>
+                <AntDesign name="right" size={16} color={theme.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* App Info */}
+          <View style={[styles.appInfoCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+                Build Version
+              </Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>
+                1.0.0 (2025)
+              </Text>
+            </View>
+            <View style={[styles.infoDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+                Platform
+              </Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>
+                React Native
+              </Text>
+            </View>
+            <View style={[styles.infoDivider, { backgroundColor: theme.border }]} />
+            <View style={styles.infoRow}>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+                Last Updated
+              </Text>
+              <Text style={[styles.infoValue, { color: theme.text }]}>
+                September 2025
+              </Text>
             </View>
           </View>
         </View>
@@ -1021,26 +1179,39 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerSection: {
-    paddingTop: Math.max(50, width * 0.13),
-    paddingBottom: Math.max(32, width * 0.08),
+    paddingTop: Constants.statusBarHeight + Math.max(20, width * 0.05),
+    paddingBottom: Math.max(24, width * 0.06),
     paddingHorizontal: Math.max(20, width * 0.05),
-    borderBottomLeftRadius: Math.max(24, width * 0.06),
-    borderBottomRightRadius: Math.max(24, width * 0.06),
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   headerContent: {
-    alignItems: "center",
+    alignItems: "flex-start",
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  headerTitleContainer: {
+    flex: 1,
+  },
+  headerIconContainer: {
+    width: Math.max(48, width * 0.12),
+    height: Math.max(48, width * 0.12),
+    borderRadius: Math.max(24, width * 0.06),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: Math.max(24, width * 0.065),
+    fontSize: Math.max(28, width * 0.07),
     fontWeight: "800",
-    color: "white",
-    marginTop: Math.max(10, width * 0.025),
     marginBottom: Math.max(4, width * 0.01),
     letterSpacing: -0.5,
   },
   headerSubtitle: {
     fontSize: Math.max(14, width * 0.035),
-    color: "rgba(255, 255, 255, 0.8)",
     fontWeight: "500",
   },
   content: {
@@ -1327,5 +1498,110 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     justifyContent: "center",
+  },
+  // New About & Support styles
+  appIconText: {
+    fontSize: Math.max(18, width * 0.045),
+    fontWeight: '900',
+    color: 'white',
+    letterSpacing: -0.5,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statDivider: {
+    width: 1,
+    height: Math.max(40, width * 0.1),
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    marginHorizontal: Math.max(20, width * 0.05),
+  },
+  supportActions: {
+    marginTop: Math.max(16, width * 0.04),
+  },
+  supportRow: {
+    flexDirection: 'row',
+    gap: Math.max(12, width * 0.03),
+    marginBottom: Math.max(12, width * 0.03),
+  },
+  supportCard: {
+    flex: 1,
+    padding: Math.max(16, width * 0.04),
+    borderRadius: Math.max(12, width * 0.03),
+    alignItems: 'center',
+    borderWidth: 1,
+    minHeight: Math.max(100, width * 0.25),
+  },
+  supportIcon: {
+    width: Math.max(40, width * 0.1),
+    height: Math.max(40, width * 0.1),
+    borderRadius: Math.max(20, width * 0.05),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Math.max(8, width * 0.02),
+  },
+  supportTitle: {
+    fontSize: Math.max(14, width * 0.035),
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: Math.max(4, width * 0.01),
+  },
+  supportSubtitle: {
+    fontSize: Math.max(12, width * 0.03),
+    textAlign: 'center',
+    lineHeight: Math.max(16, width * 0.04),
+  },
+  feedbackCard: {
+    padding: Math.max(16, width * 0.04),
+    borderRadius: Math.max(12, width * 0.03),
+    borderWidth: 1,
+  },
+  feedbackContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  feedbackIcon: {
+    width: Math.max(40, width * 0.1),
+    height: Math.max(40, width * 0.1),
+    borderRadius: Math.max(20, width * 0.05),
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: Math.max(12, width * 0.03),
+  },
+  feedbackText: {
+    flex: 1,
+  },
+  feedbackTitle: {
+    fontSize: Math.max(16, width * 0.04),
+    fontWeight: '600',
+    marginBottom: Math.max(4, width * 0.01),
+  },
+  feedbackSubtitle: {
+    fontSize: Math.max(14, width * 0.035),
+    lineHeight: Math.max(18, width * 0.045),
+  },
+  appInfoCard: {
+    marginTop: Math.max(16, width * 0.04),
+    padding: Math.max(16, width * 0.04),
+    borderRadius: Math.max(12, width * 0.03),
+    borderWidth: 1,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Math.max(12, width * 0.03),
+  },
+  infoLabel: {
+    fontSize: Math.max(14, width * 0.035),
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: Math.max(14, width * 0.035),
+    fontWeight: '600',
+  },
+  infoDivider: {
+    height: 1,
+    marginHorizontal: 0,
   },
 });

@@ -1,4 +1,4 @@
-# Expense Tracker 💰
+# Expensio 💰
 
 A modern, feature-rich mobile expense tracking application built with React Native and Expo. Keep track of your spending, monitor budgets, and gain insights into your financial habits with an intuitive and secure interface.
 
@@ -128,7 +128,7 @@ expenses (
 ## 📁 Project Structure
 
 ```
-expense_tracker/
+expensio/
 ├── screens/           # All application screens
 │   ├── AddExpenseScreen.tsx
 │   ├── ExpensesScreen.tsx
@@ -156,8 +156,8 @@ expense_tracker/
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/AASani29/expense_tracker.git
-   cd expense_tracker
+   git clone https://github.com/AASani29/expensio.git
+   cd expensio
    ```
 
 2. **Install dependencies**

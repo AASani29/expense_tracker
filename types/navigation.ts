@@ -4,6 +4,7 @@ import { Expense } from '../services/DatabaseService';
 // Stack Navigator Type Definitions
 export type ExpensesStackParamList = {
   ExpensesList: undefined;
+  AddExpense: undefined;
   ExpenseDetails: { expenseId: number };
   EditExpense: { expense: Expense };
 };
@@ -15,7 +16,7 @@ export type SettingsStackParamList = {
 
 export type TabParamList = {
   Home: undefined;
-  Add: undefined;
+  Budget: undefined;
   Stats: undefined;
   Settings: undefined;
 };

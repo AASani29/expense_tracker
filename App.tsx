@@ -12,6 +12,7 @@ import ExpensesScreen from "./screens/ExpensesScreen";
 import AddExpenseScreen from "./screens/AddExpenseScreen";
 import StatsScreen from "./screens/StatsScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import BudgetScreen from "./screens/BudgetScreen";
 import ExpenseDetailsScreen from "./screens/ExpenseDetailsScreen";
 import EditExpenseScreen from "./screens/EditExpenseScreen";
 import AuthenticationScreen from "./screens/AuthenticationScreen";
@@ -39,6 +40,7 @@ function ExpensesStack() {
       }}
     >
       <Stack.Screen name="ExpensesList" component={ExpensesScreen} />
+      <Stack.Screen name="AddExpense" component={AddExpenseScreen} />
       <Stack.Screen
         name="ExpenseDetails"
         component={ExpenseDetailsScreen}
@@ -113,8 +115,8 @@ function TabNavigator() {
 
           if (route.name === "Home") {
             iconName = "home";
-          } else if (route.name === "Add") {
-            iconName = "plus";
+          } else if (route.name === "Budget") {
+            iconName = "wallet";
           } else if (route.name === "Stats") {
             iconName = "barschart";
           } else if (route.name === "Settings") {
@@ -135,7 +137,7 @@ function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={ExpensesStack} />
-      <Tab.Screen name="Add" component={AddExpenseScreen} />
+      <Tab.Screen name="Budget" component={BudgetScreen} />
       <Tab.Screen name="Stats" component={StatsScreen} />
       <Tab.Screen name="Settings" component={SettingsStack} />
     </Tab.Navigator>

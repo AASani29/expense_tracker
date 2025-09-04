@@ -11,13 +11,17 @@ import {
   ActivityIndicator,
   Platform,
   Dimensions,
+  Modal,
+  ScrollView,
+  KeyboardAvoidingView,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
 import Constants from "expo-constants";
+import DateTimePicker from "@react-native-community/datetimepicker";
 import { useApp } from "../context/AppContext";
 import { Expense } from "../services/DatabaseService";
-import { settingsService } from "../services/SettingsService";
+import { settingsService, CATEGORIES } from "../services/SettingsService";
 import { ExpensesScreenNavigationProp } from "../types/navigation";
 import { getTheme } from "../utils/themes";
 
@@ -31,6 +35,7 @@ const ExpensesScreen: React.FC = () => {
     refreshExpenses,
     deleteExpense,
     searchExpenses,
+    addExpense,
     settings,
   } = useApp();
   const theme = getTheme(settings.theme);
@@ -38,6 +43,18 @@ const ExpensesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filteredExpenses, setFilteredExpenses] = useState<Expense[]>([]);
   const [showSearch, setShowSearch] = useState(false);
+  
+  // Modal form states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formTitle, setFormTitle] = useState("");
+  const [formAmount, setFormAmount] = useState("");
+  const [formCategory, setFormCategory] = useState(settings.defaultCategory);
+  const [formDate, setFormDate] = useState(new Date());
+  const [formDescription, setFormDescription] = useState("");
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formErrors, setFormErrors] = useState<{ [key: string]: string }>({});
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
 
   useEffect(() => {
     if (searchQuery.trim()) {
@@ -163,6 +180,95 @@ const ExpensesScreen: React.FC = () => {
       Other: "ellipsis1",
     };
     return iconMap[category] || "ellipsis1";
+  };
+
+  // Form validation and handlers
+  const validateForm = (): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!formTitle.trim()) {
+      newErrors.title = "Title is required";
+    }
+
+    const amountNum = parseFloat(formAmount);
+    if (!formAmount.trim() || isNaN(amountNum) || amountNum <= 0) {
+      newErrors.amount = "Please enter a valid positive amount";
+    }
+
+    if (!formCategory) {
+      newErrors.category = "Please select a category";
+    }
+
+    if (formDate > new Date()) {
+      newErrors.date = "Date cannot be in the future";
+    }
+
+    setFormErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleFormSave = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setFormLoading(true);
+      const newExpense = {
+        title: formTitle.trim(),
+        amount: parseFloat(formAmount),
+        category: formCategory,
+        date: formDate.toISOString().split("T")[0],
+        description: formDescription.trim(),
+      };
+
+      await addExpense(newExpense);
+      resetForm();
+      setShowAddModal(false);
+      Alert.alert("Success", "Expense added successfully!");
+    } catch (error) {
+      console.error("Error adding expense:", error);
+      Alert.alert("Error", "Failed to add expense. Please try again.");
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setFormTitle("");
+    setFormAmount("");
+    setFormCategory(settings.defaultCategory);
+    setFormDate(new Date());
+    setFormDescription("");
+    setFormErrors({});
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === "android") {
+      setShowDatePicker(false);
+    }
+    if (selectedDate && event.type !== "dismissed") {
+      setFormDate(selectedDate);
+    }
+    if (event.type === "dismissed") {
+      setShowDatePicker(false);
+    }
+  };
+
+  const formatFormDate = (date: Date): string => {
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  };
+
+  const handleCategorySelect = (selectedCategory: string) => {
+    setFormCategory(selectedCategory);
+    setShowCategoryModal(false);
+    if (formErrors.category) {
+      setFormErrors((prev) => ({ ...prev, category: "" }));
+    }
   };
 
   const getCategoryColor = (category: string) => {
@@ -327,9 +433,25 @@ const ExpensesScreen: React.FC = () => {
         ]}
       >
         <View style={styles.headerTop}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>
-            My Expenses
-          </Text>
+          <View style={styles.logoContainer}>
+            <View style={styles.logoTextContainer}>
+              <View style={styles.logoMainText}>
+                <Text style={[styles.logoText, { color: theme.accent }]}>
+                  EXPEN
+                </Text>
+                <Text style={[styles.logoTextDollar, { color: theme.accent }]}>
+                  $
+                </Text>
+                <Text style={[styles.logoText, { color: theme.accent }]}>
+                  IO
+                </Text>
+              </View>
+              <Text style={[styles.logoSubtext, { color: theme.textSecondary }]}>
+                Smart Spending
+              </Text>
+            </View>
+            <View style={[styles.logoUnderline, { backgroundColor: theme.accent }]} />
+          </View>
           <TouchableOpacity
             style={styles.searchButton}
             onPress={() => setShowSearch(!showSearch)}
@@ -341,7 +463,7 @@ const ExpensesScreen: React.FC = () => {
             />
           </TouchableOpacity>
         </View>
-
+        
         {showSearch && (
           <View
             style={[
@@ -375,20 +497,30 @@ const ExpensesScreen: React.FC = () => {
         )}
 
         {filteredExpenses.length > 0 && (
-          <View style={styles.summaryContainer}>
-            <Text style={[styles.summaryText, { color: theme.accent }]}>
-              Total:{" "}
-              {formatAmount(
-                filteredExpenses.reduce(
-                  (sum, expense) => sum + expense.amount,
-                  0
-                )
-              )}
-            </Text>
-            <Text style={[styles.countText, { color: theme.textSecondary }]}>
-              {filteredExpenses.length} expense
-              {filteredExpenses.length !== 1 ? "s" : ""}
-            </Text>
+          <View style={[styles.summaryCard, { backgroundColor: theme.cardBackground, borderColor: theme.border }]}>
+            <View style={styles.summaryContent}>
+              <View style={styles.summaryTextSection}>
+                <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>
+                  Total Spending
+                </Text>
+                <Text style={[styles.summaryAmount, { color: theme.accent }]}>
+                  {formatAmount(
+                    filteredExpenses.reduce(
+                      (sum, expense) => sum + expense.amount,
+                      0
+                    )
+                  )}
+                </Text>
+                <Text style={[styles.expenseCount, { color: theme.textSecondary }]}>
+                  {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""} • This period
+                </Text>
+              </View>
+              <View style={styles.summaryIconSection}>
+                <View style={[styles.summaryIcon, { backgroundColor: theme.accent + '15' }]}>
+                  <AntDesign name="wallet" size={24} color={theme.accent} />
+                </View>
+              </View>
+            </View>
           </View>
         )}
       </View>
@@ -406,6 +538,236 @@ const ExpensesScreen: React.FC = () => {
         }
         showsVerticalScrollIndicator={false}
       />
+      
+      {/* Floating Add Button */}
+      <TouchableOpacity
+        style={[styles.floatingButton, { backgroundColor: theme.accent }]}
+        onPress={() => setShowAddModal(true)}
+        activeOpacity={0.8}
+      >
+        <AntDesign name="plus" size={24} color="#fff" />
+      </TouchableOpacity>
+
+      {/* Add Expense Modal */}
+      <Modal
+        visible={showAddModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => {
+          resetForm();
+          setShowAddModal(false);
+        }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: theme.background }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Add Expense</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  resetForm();
+                  setShowAddModal(false);
+                }}
+                style={styles.modalCloseButton}
+              >
+                <AntDesign name="close" size={20} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Title Input */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: theme.text }]}>Title *</Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    { 
+                      borderColor: formErrors.title ? '#ff4444' : theme.inputBorder,
+                      backgroundColor: theme.inputBackground,
+                      color: theme.text 
+                    }
+                  ]}
+                  value={formTitle}
+                  onChangeText={setFormTitle}
+                  placeholder="Enter expense title"
+                  placeholderTextColor={theme.textSecondary}
+                />
+                {formErrors.title && (
+                  <Text style={styles.errorText}>{formErrors.title}</Text>
+                )}
+              </View>
+
+              {/* Amount Input */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: theme.text }]}>Amount *</Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    { 
+                      borderColor: formErrors.amount ? '#ff4444' : theme.inputBorder,
+                      backgroundColor: theme.inputBackground,
+                      color: theme.text 
+                    }
+                  ]}
+                  value={formAmount}
+                  onChangeText={setFormAmount}
+                  placeholder="0.00"
+                  placeholderTextColor={theme.textSecondary}
+                  keyboardType="numeric"
+                />
+                {formErrors.amount && (
+                  <Text style={styles.errorText}>{formErrors.amount}</Text>
+                )}
+              </View>
+
+              {/* Category Picker */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: theme.text }]}>Category *</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.formInput,
+                    styles.categoryPicker,
+                    { 
+                      borderColor: formErrors.category ? '#ff4444' : theme.inputBorder,
+                      backgroundColor: theme.inputBackground 
+                    }
+                  ]}
+                  onPress={() => setShowCategoryModal(true)}
+                >
+                  <Text style={[styles.categoryText, { color: theme.text }]}>
+                    {formCategory}
+                  </Text>
+                  <AntDesign name="down" size={14} color={theme.textSecondary} />
+                </TouchableOpacity>
+                {formErrors.category && (
+                  <Text style={styles.errorText}>{formErrors.category}</Text>
+                )}
+              </View>
+
+              {/* Date Picker */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: theme.text }]}>Date</Text>
+                <TouchableOpacity
+                  style={[
+                    styles.formInput,
+                    styles.datePicker,
+                    { 
+                      borderColor: theme.inputBorder,
+                      backgroundColor: theme.inputBackground 
+                    }
+                  ]}
+                  onPress={() => setShowDatePicker(true)}
+                >
+                  <Text style={[styles.dateText, { color: theme.text }]}>
+                    {formatFormDate(formDate)}
+                  </Text>
+                  <AntDesign name="calendar" size={14} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Description Input */}
+              <View style={styles.formGroup}>
+                <Text style={[styles.formLabel, { color: theme.text }]}>Description</Text>
+                <TextInput
+                  style={[
+                    styles.formInput,
+                    styles.descriptionInput,
+                    { 
+                      borderColor: theme.inputBorder,
+                      backgroundColor: theme.inputBackground,
+                      color: theme.text 
+                    }
+                  ]}
+                  value={formDescription}
+                  onChangeText={setFormDescription}
+                  placeholder="Add a note (optional)"
+                  placeholderTextColor={theme.textSecondary}
+                  multiline
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
+
+            {/* Modal Footer */}
+            <View style={[styles.modalFooter, { borderTopColor: theme.border }]}>
+              <TouchableOpacity
+                style={[styles.cancelButton, { borderColor: theme.inputBorder }]}
+                onPress={() => {
+                  resetForm();
+                  setShowAddModal(false);
+                }}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleFormSave}
+                style={[styles.saveButton, { backgroundColor: theme.accent }]}
+                disabled={formLoading}
+              >
+                {formLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+
+        {/* Category Selection Modal */}
+        <Modal
+          visible={showCategoryModal}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setShowCategoryModal(false)}
+        >
+          <View style={[styles.categoryModalContainer, { backgroundColor: theme.background }]}>
+            <View style={[styles.categoryModalHeader, { borderBottomColor: theme.border }]}>
+              <TouchableOpacity onPress={() => setShowCategoryModal(false)}>
+                <AntDesign name="close" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+              <Text style={[styles.categoryModalTitle, { color: theme.text }]}>
+                Select Category
+              </Text>
+              <View style={{ width: 24 }} />
+            </View>
+            <ScrollView style={styles.categoryList}>
+              {CATEGORIES.map((cat) => (
+                <TouchableOpacity
+                  key={cat}
+                  style={[
+                    styles.categoryItem,
+                    { backgroundColor: theme.cardBackground },
+                    formCategory === cat && { backgroundColor: theme.accent + '20' }
+                  ]}
+                  onPress={() => handleCategorySelect(cat)}
+                >
+                  <Text style={[
+                    styles.categoryItemText, 
+                    { color: theme.text },
+                    formCategory === cat && { color: theme.accent, fontWeight: '600' }
+                  ]}>
+                    {cat}
+                  </Text>
+                  {formCategory === cat && (
+                    <AntDesign name="check" size={16} color={theme.accent} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Modal>
+
+        {/* Date Picker */}
+        {showDatePicker && (
+          <DateTimePicker
+            value={formDate}
+            mode="date"
+            display={Platform.OS === "ios" ? "spinner" : "default"}
+            onChange={onDateChange}
+            maximumDate={new Date()}
+          />
+        )}
+      </Modal>
     </View>
   );
 };
@@ -432,12 +794,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: Math.max(10, width * 0.025),
-  },
-  headerTitle: {
-    fontSize: Math.max(28, width * 0.075), // Responsive font size
-    fontWeight: "800",
-    letterSpacing: -0.5,
+    marginBottom: Math.max(8, width * 0.02),
   },
   searchButton: {
     padding: Math.max(8, width * 0.02),
@@ -460,19 +817,57 @@ const styles = StyleSheet.create({
     padding: Math.max(8, width * 0.02),
     marginLeft: Math.max(8, width * 0.02),
   },
-  summaryContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: Math.max(8, width * 0.02),
+  summaryCard: {
+    marginHorizontal: Math.max(16, width * 0.04),
+    marginTop: Math.max(16, width * 0.04),
+    marginBottom: Math.max(12, width * 0.03),
+    padding: Math.max(20, width * 0.05),
+    borderRadius: Math.max(16, width * 0.04),
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  summaryText: {
-    fontSize: Math.max(16, width * 0.042),
-    fontWeight: "700",
+  summaryContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  countText: {
-    fontSize: Math.max(13, width * 0.032),
-    fontWeight: "500",
+  summaryTextSection: {
+    flex: 1,
+  },
+  summaryLabel: {
+    fontSize: Math.max(14, width * 0.035),
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Math.max(8, width * 0.02),
+  },
+  summaryAmount: {
+    fontSize: Math.max(24, width * 0.06),
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: Math.max(6, width * 0.015),
+  },
+  expenseCount: {
+    fontSize: Math.max(12, width * 0.03),
+    fontWeight: '500',
+    opacity: 0.8,
+  },
+  summaryIconSection: {
+    marginLeft: Math.max(16, width * 0.04),
+  },
+  summaryIcon: {
+    width: Math.max(48, width * 0.12),
+    height: Math.max(48, width * 0.12),
+    borderRadius: Math.max(24, width * 0.06),
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   expenseItem: {
     marginHorizontal: Math.max(16, width * 0.04),
@@ -552,6 +947,220 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: Math.max(12, width * 0.03),
     fontSize: Math.max(15, width * 0.038),
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: "flex-start",
+  },
+  logoContainer: {
+    alignItems: "flex-start",
+  },
+  logoTextContainer: {
+    justifyContent: 'center',
+  },
+  logoMainText: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  logoText: {
+    fontSize: Math.max(28, width * 0.07),
+    fontWeight: "900",
+    letterSpacing: -0.5,
+    textTransform: "uppercase",
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
+    lineHeight: Math.max(30, width * 0.075),
+  },
+  logoTextDollar: {
+    fontSize: Math.max(32, width * 0.08),
+    fontWeight: "900",
+    letterSpacing: -0.5,
+    fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif-black',
+    lineHeight: Math.max(30, width * 0.075),
+    marginHorizontal: -1,
+    transform: [{ scaleX: 1.1 }],
+  },
+  logoSubtext: {
+    fontSize: Math.max(11, width * 0.028),
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    marginTop: -2,
+    opacity: 0.7,
+  },
+  logoUnderline: {
+    height: 2,
+    width: Math.max(80, width * 0.2),
+    borderRadius: 1,
+    marginTop: 2,
+  },
+  floatingButton: {
+    position: 'absolute',
+    bottom: Math.max(25, width * 0.06),
+    right: Math.max(20, width * 0.05),
+    width: Math.max(56, width * 0.14),
+    height: Math.max(56, width * 0.14),
+    borderRadius: Math.max(28, width * 0.07),
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    zIndex: 1000,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalContainer: {
+    width: '100%',
+    maxWidth: 400,
+    maxHeight: '80%',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 10,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 20,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    flex: 1,
+    textAlign: 'center',
+    marginRight: 24,
+  },
+  modalContent: {
+    maxHeight: 400,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    gap: 12,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+  },
+  cancelButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  saveButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  formGroup: {
+    marginBottom: 16,
+  },
+  formLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  formInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  categoryPicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  categoryText: {
+    fontSize: 16,
+  },
+  datePicker: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  dateText: {
+    fontSize: 16,
+  },
+  descriptionInput: {
+    height: 60,
+    textAlignVertical: 'top',
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  categoryModalContainer: {
+    flex: 1,
+  },
+  categoryModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    paddingTop: Constants.statusBarHeight + 16,
+  },
+  categoryModalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  categoryList: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  categoryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderRadius: 12,
+    marginVertical: 4,
+  },
+  categoryItemText: {
+    fontSize: 16,
   },
 });
 

@@ -9,6 +9,7 @@ import {
   Dimensions,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { useApp } from "../context/AppContext";
 import { databaseService, ExpenseStats } from "../services/DatabaseService";
 import { settingsService } from "../services/SettingsService";
@@ -366,7 +367,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: Math.max(16, width * 0.04), // Responsive padding: 4% of screen width, minimum 16
-    paddingTop: Math.max(20, width * 0.05),
+    paddingTop: Constants.statusBarHeight + Math.max(20, width * 0.05),
   },
   header: {
     fontSize: Math.max(28, width * 0.08), // Responsive: 8% of screen width, minimum 28
