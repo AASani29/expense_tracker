@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import * as LocalAuthentication from 'expo-local-authentication';
 
 export interface AppSettings {
   currency: string;
@@ -7,6 +8,9 @@ export interface AppSettings {
   theme: 'light' | 'dark';
   biometricEnabled: boolean;
   pinEnabled: boolean;
+  budgetEnabled: boolean;
+  monthlyBudget: number;
+  budgetAlertPercentage: number;
 }
 
 export const CATEGORIES = [
@@ -58,7 +62,10 @@ class SettingsService {
     defaultCategory: 'Other',
     theme: 'light',
     biometricEnabled: false,
-    pinEnabled: false,
+    pinEnabled: false, // Set to true for testing authentication
+    budgetEnabled: false,
+    monthlyBudget: 1000,
+    budgetAlertPercentage: 80,
   };
 
   async getSettings(): Promise<AppSettings> {
@@ -100,7 +107,33 @@ class SettingsService {
 
   async setBiometricEnabled(enabled: boolean): Promise<void> {
     try {
+      if (enabled) {
+        // Check if biometric authentication is available
+        const hasHardware = await LocalAuthentication.hasHardwareAsync();
+        const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+        
+        if (!hasHardware) {
+          throw new Error('Biometric hardware not available on this device');
+        }
+        
+        if (!isEnrolled) {
+          throw new Error('No biometric credentials enrolled on this device');
+        }
+
+        // Test authentication before enabling
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to enable biometric login',
+          cancelLabel: 'Cancel',
+          fallbackLabel: 'Use PIN',
+        });
+
+        if (!result.success) {
+          throw new Error('Biometric authentication failed');
+        }
+      }
+
       await this.updateSettings({ biometricEnabled: enabled });
+      
       if (!enabled) {
         // Clear biometric data if disabled
         await SecureStore.deleteItemAsync('biometric_enabled');
@@ -110,6 +143,51 @@ class SettingsService {
     } catch (error) {
       console.error('Error setting biometric preference:', error);
       throw error;
+    }
+  }
+
+  async authenticateWithBiometric(): Promise<boolean> {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      
+      if (!hasHardware || !isEnrolled) {
+        return false;
+      }
+
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to access your expenses',
+        cancelLabel: 'Cancel',
+        fallbackLabel: 'Use PIN',
+      });
+
+      return result.success;
+    } catch (error) {
+      console.error('Error authenticating with biometric:', error);
+      return false;
+    }
+  }
+
+  async isBiometricAvailable(): Promise<{ isAvailable: boolean; biometricType: string }> {
+    try {
+      const hasHardware = await LocalAuthentication.hasHardwareAsync();
+      const isEnrolled = await LocalAuthentication.isEnrolledAsync();
+      const supportedTypes = await LocalAuthentication.supportedAuthenticationTypesAsync();
+      
+      let biometricType = 'Biometric';
+      if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) {
+        biometricType = 'Face ID';
+      } else if (supportedTypes.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
+        biometricType = 'Fingerprint';
+      }
+
+      return {
+        isAvailable: hasHardware && isEnrolled,
+        biometricType
+      };
+    } catch (error) {
+      console.error('Error checking biometric availability:', error);
+      return { isAvailable: false, biometricType: 'Biometric' };
     }
   }
 
@@ -176,6 +254,61 @@ class SettingsService {
   formatAmount(amount: number, currencyCode: string): string {
     const symbol = this.getCurrencySymbol(currencyCode);
     return `${symbol}${amount.toFixed(2)}`;
+  }
+
+  async exportSettings(): Promise<string> {
+    try {
+      const settings = await this.getSettings();
+      return JSON.stringify(settings, null, 2);
+    } catch (error) {
+      console.error('Error exporting settings:', error);
+      throw error;
+    }
+  }
+
+  async importSettings(settingsJson: string): Promise<void> {
+    try {
+      const settings = JSON.parse(settingsJson);
+      
+      // Validate settings structure
+      const validKeys = ['currency', 'defaultCategory', 'theme', 'biometricEnabled', 'pinEnabled', 'budgetEnabled', 'monthlyBudget', 'notificationsEnabled', 'budgetAlertPercentage'];
+      const isValid = Object.keys(settings).every(key => validKeys.includes(key));
+      
+      if (!isValid) {
+        throw new Error('Invalid settings format');
+      }
+
+      await this.updateSettings(settings);
+    } catch (error) {
+      console.error('Error importing settings:', error);
+      throw error;
+    }
+  }
+
+  async setBudgetEnabled(enabled: boolean): Promise<void> {
+    await this.updateSettings({ budgetEnabled: enabled });
+  }
+
+  async setMonthlyBudget(budget: number): Promise<void> {
+    await this.updateSettings({ monthlyBudget: budget });
+  }
+
+  async setBudgetAlertPercentage(percentage: number): Promise<void> {
+    await this.updateSettings({ budgetAlertPercentage: percentage });
+  }
+
+  async getBudgetProgress(currentSpending: number): Promise<{ percentage: number; remaining: number; exceeded: boolean }> {
+    const settings = await this.getSettings();
+    
+    if (!settings.budgetEnabled) {
+      return { percentage: 0, remaining: 0, exceeded: false };
+    }
+
+    const percentage = (currentSpending / settings.monthlyBudget) * 100;
+    const remaining = settings.monthlyBudget - currentSpending;
+    const exceeded = currentSpending > settings.monthlyBudget;
+
+    return { percentage, remaining, exceeded };
   }
 }
 

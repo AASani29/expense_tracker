@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   TextInput,
   FlatList,
   KeyboardAvoidingView,
+  Dimensions,
 } from "react-native";
 import { AntDesign } from "@expo/vector-icons";
 import { useApp } from "../context/AppContext";
@@ -25,14 +26,36 @@ import {
 } from "../services/SettingsService";
 import { databaseService } from "../services/DatabaseService";
 import { getTheme } from "../utils/themes";
+import { SettingsScreenNavigationProp } from "../types/navigation";
 
-export default function SettingsScreen() {
+const { width } = Dimensions.get("window");
+
+export default function SettingsScreen({
+  navigation,
+}: {
+  navigation: SettingsScreenNavigationProp;
+}) {
   const { settings, updateSettings, expenses } = useApp();
   const theme = getTheme(settings.theme);
   const [isExporting, setIsExporting] = useState(false);
   const [showCategoryModal, setShowCategoryModal] = useState(false);
   const [customCategory, setCustomCategory] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const [biometricInfo, setBiometricInfo] = useState({
+    isAvailable: false,
+    biometricType: "Biometric",
+  });
+  const [showBudgetModal, setShowBudgetModal] = useState(false);
+  const [budgetInput, setBudgetInput] = useState("");
+
+  useEffect(() => {
+    checkBiometricAvailability();
+  }, []);
+
+  const checkBiometricAvailability = async () => {
+    const info = await settingsService.isBiometricAvailable();
+    setBiometricInfo(info);
+  };
 
   const handleCurrencyChange = async (currency: string) => {
     try {
@@ -44,34 +67,7 @@ export default function SettingsScreen() {
   };
 
   const showCurrencyPicker = () => {
-    const options = CURRENCIES.map(
-      (currency) => `${currency.symbol} ${currency.code}`
-    );
-    const cancelButtonIndex = options.length;
-
-    if (Platform.OS === "ios") {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          options: [...options, "Cancel"],
-          cancelButtonIndex,
-          title: "Select Currency",
-        },
-        (buttonIndex) => {
-          if (buttonIndex < options.length) {
-            const selectedCurrency = CURRENCIES[buttonIndex];
-            handleCurrencyChange(selectedCurrency.code);
-          }
-        }
-      );
-    } else {
-      Alert.alert("Select Currency", "", [
-        ...CURRENCIES.map((currency, index) => ({
-          text: `${currency.symbol} ${currency.code}`,
-          onPress: () => handleCurrencyChange(currency.code),
-        })),
-        { text: "Cancel", style: "cancel" },
-      ]);
-    }
+    navigation.navigate("CurrencySelection");
   };
 
   const handleDefaultCategoryChange = async (category: string) => {
@@ -282,30 +278,54 @@ export default function SettingsScreen() {
 
   const handleBiometricToggle = async (enabled: boolean) => {
     try {
+      if (enabled && !biometricInfo.isAvailable) {
+        Alert.alert(
+          "Biometric Not Available",
+          "Biometric authentication is not available or not set up on this device. Please set up fingerprint or face recognition in your device settings first."
+        );
+        return;
+      }
+
       await settingsService.setBiometricEnabled(enabled);
       await updateSettings({ biometricEnabled: enabled });
       Alert.alert(
         "Success",
-        `Biometric authentication ${enabled ? "enabled" : "disabled"}!`
+        `${biometricInfo.biometricType} authentication ${
+          enabled ? "enabled" : "disabled"
+        }!`
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to update biometric settings");
+      console.error("Biometric toggle error:", error);
+      Alert.alert(
+        "Error",
+        error instanceof Error
+          ? error.message
+          : "Failed to update biometric settings"
+      );
     }
   };
 
   const handlePinToggle = async (enabled: boolean) => {
     if (enabled) {
-      // In a real app, you'd show a PIN setup screen
-      Alert.alert(
+      // Show PIN input dialog
+      Alert.prompt(
         "Set PIN",
-        "PIN protection feature would show a PIN setup screen here.",
+        "Enter a 4-digit PIN to secure your app:",
         [
-          { text: "Cancel" },
+          { text: "Cancel", style: "cancel" },
           {
             text: "Set PIN",
-            onPress: async () => {
+            onPress: async (pin) => {
+              if (!pin || pin.length < 4 || !/^\d+$/.test(pin)) {
+                Alert.alert(
+                  "Invalid PIN",
+                  "Please enter a 4-digit numeric PIN"
+                );
+                return;
+              }
+
               try {
-                await settingsService.setPin("1234"); // Demo PIN
+                await settingsService.setPin(pin);
                 await updateSettings({ pinEnabled: true });
                 Alert.alert("Success", "PIN protection enabled!");
               } catch (error) {
@@ -313,16 +333,32 @@ export default function SettingsScreen() {
               }
             },
           },
-        ]
+        ],
+        "secure-text",
+        "",
+        "numeric"
       );
     } else {
-      try {
-        await settingsService.setPinEnabled(false);
-        await updateSettings({ pinEnabled: false });
-        Alert.alert("Success", "PIN protection disabled!");
-      } catch (error) {
-        Alert.alert("Error", "Failed to disable PIN");
-      }
+      Alert.alert(
+        "Disable PIN",
+        "Are you sure you want to disable PIN protection?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Disable",
+            style: "destructive",
+            onPress: async () => {
+              try {
+                await settingsService.setPinEnabled(false);
+                await updateSettings({ pinEnabled: false });
+                Alert.alert("Success", "PIN protection disabled!");
+              } catch (error) {
+                Alert.alert("Error", "Failed to disable PIN");
+              }
+            },
+          },
+        ]
+      );
     }
   };
 
@@ -357,6 +393,84 @@ export default function SettingsScreen() {
       Alert.alert("Error", "Failed to export data");
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleBackupSettings = async () => {
+    try {
+      const settingsJson = await settingsService.exportSettings();
+      await Share.share({
+        message: settingsJson,
+        title: "Settings Backup",
+      });
+    } catch (error) {
+      Alert.alert("Error", "Failed to backup settings");
+    }
+  };
+
+  const handleRestoreSettings = () => {
+    Alert.prompt(
+      "Restore Settings",
+      "Paste your settings backup data:",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Restore",
+          onPress: async (settingsData) => {
+            if (!settingsData) return;
+
+            try {
+              await settingsService.importSettings(settingsData);
+              const newSettings = await settingsService.getSettings();
+              await updateSettings(newSettings);
+              Alert.alert("Success", "Settings restored successfully!");
+            } catch (error) {
+              Alert.alert(
+                "Error",
+                "Failed to restore settings. Please check the format."
+              );
+            }
+          },
+        },
+      ],
+      "plain-text"
+    );
+  };
+
+  const handleBudgetToggle = async (enabled: boolean) => {
+    try {
+      await settingsService.setBudgetEnabled(enabled);
+      await updateSettings({ budgetEnabled: enabled });
+
+      if (enabled && settings.monthlyBudget === 0) {
+        // Show budget setup if enabling for first time
+        setShowBudgetModal(true);
+      }
+    } catch (error) {
+      Alert.alert("Error", "Failed to update budget settings");
+    }
+  };
+
+  const handleBudgetAmountPress = () => {
+    setBudgetInput(settings.monthlyBudget.toString());
+    setShowBudgetModal(true);
+  };
+
+  const handleBudgetSubmit = async () => {
+    const amount = parseFloat(budgetInput);
+    if (isNaN(amount) || amount <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid budget amount");
+      return;
+    }
+
+    try {
+      await settingsService.setMonthlyBudget(amount);
+      await updateSettings({ monthlyBudget: amount });
+      setShowBudgetModal(false);
+      setBudgetInput("");
+      Alert.alert("Success", "Monthly budget updated successfully!");
+    } catch (error) {
+      Alert.alert("Error", "Failed to update budget");
     }
   };
 
@@ -548,7 +662,77 @@ export default function SettingsScreen() {
                 <AntDesign name="right" size={16} color={theme.textSecondary} />
               }
               showChevron={false}
+              isLast={true}
             />
+          </View>
+        </View>
+
+        {/* Budget & Notifications Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <AntDesign name="wallet" size={20} color={theme.accent} />
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>
+              Budget & Notifications
+            </Text>
+          </View>
+
+          <View
+            style={[
+              styles.settingsGroup,
+              {
+                backgroundColor: theme.cardBackground,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <SettingRow
+              icon="piechart"
+              title="Monthly Budget"
+              subtitle={
+                settings.budgetEnabled
+                  ? `${settingsService.formatAmount(
+                      settings.monthlyBudget,
+                      settings.currency
+                    )} per month`
+                  : "Disabled"
+              }
+              rightComponent={
+                <Switch
+                  value={settings.budgetEnabled}
+                  onValueChange={handleBudgetToggle}
+                  trackColor={{ false: theme.border, true: theme.accent }}
+                  thumbColor={settings.budgetEnabled ? "#fff" : "#f4f3f4"}
+                />
+              }
+              showChevron={false}
+            />
+
+            {settings.budgetEnabled && (
+              <SettingRow
+                icon="edit"
+                title="Budget Amount"
+                subtitle={`Set your monthly spending limit`}
+                onPress={handleBudgetAmountPress}
+                rightComponent={
+                  <Text
+                    style={[
+                      {
+                        color: theme.accent,
+                        fontWeight: "600",
+                        fontSize: Math.max(14, width * 0.035),
+                      },
+                    ]}
+                  >
+                    {settingsService.formatAmount(
+                      settings.monthlyBudget,
+                      settings.currency
+                    )}
+                  </Text>
+                }
+                showChevron={true}
+                isLast={true}
+              />
+            )}
           </View>
         </View>
 
@@ -572,14 +756,19 @@ export default function SettingsScreen() {
           >
             <SettingRow
               icon="Safety"
-              title="Biometric Authentication"
-              subtitle="Secure with fingerprint or face ID"
+              title={`${biometricInfo.biometricType} Authentication`}
+              subtitle={
+                biometricInfo.isAvailable
+                  ? `Secure with ${biometricInfo.biometricType.toLowerCase()}`
+                  : `${biometricInfo.biometricType} not available on this device`
+              }
               rightComponent={
                 <Switch
-                  value={settings.biometricEnabled}
+                  value={settings.biometricEnabled && biometricInfo.isAvailable}
                   onValueChange={handleBiometricToggle}
                   trackColor={{ false: theme.border, true: theme.accent }}
                   thumbColor={settings.biometricEnabled ? "#fff" : "#f4f3f4"}
+                  disabled={!biometricInfo.isAvailable}
                 />
               }
               showChevron={false}
@@ -636,6 +825,28 @@ export default function SettingsScreen() {
                     color={theme.textSecondary}
                   />
                 )
+              }
+              showChevron={false}
+            />
+
+            <SettingRow
+              icon="upload"
+              title="Backup Settings"
+              subtitle="Export app settings"
+              onPress={handleBackupSettings}
+              rightComponent={
+                <AntDesign name="right" size={16} color={theme.textSecondary} />
+              }
+              showChevron={false}
+            />
+
+            <SettingRow
+              icon="clouduploado"
+              title="Restore Settings"
+              subtitle="Import app settings from backup"
+              onPress={handleRestoreSettings}
+              rightComponent={
+                <AntDesign name="right" size={16} color={theme.textSecondary} />
               }
               showChevron={false}
             />
@@ -717,6 +928,90 @@ export default function SettingsScreen() {
 
       {/* Category Selection Modal */}
       {renderCategoryModal()}
+
+      {/* Budget Setup Modal */}
+      <Modal
+        visible={showBudgetModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowBudgetModal(false)}
+      >
+        <View
+          style={[styles.modalOverlay, { backgroundColor: theme.modalOverlay }]}
+        >
+          <View
+            style={[
+              styles.modalContainer,
+              { backgroundColor: theme.cardBackground },
+            ]}
+          >
+            <View
+              style={[styles.modalHeader, { borderBottomColor: theme.border }]}
+            >
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Set Monthly Budget
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowBudgetModal(false)}
+                style={styles.closeButton}
+              >
+                <AntDesign name="close" size={24} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.customInputContainer}>
+              <Text style={[styles.customInputLabel, { color: theme.text }]}>
+                Enter your monthly budget:
+              </Text>
+              <TextInput
+                style={[
+                  styles.customTextInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.text,
+                  },
+                ]}
+                value={budgetInput}
+                onChangeText={setBudgetInput}
+                placeholder="e.g., 1000"
+                placeholderTextColor={theme.textSecondary}
+                autoFocus={true}
+                keyboardType="numeric"
+              />
+              <View style={styles.customInputButtons}>
+                <TouchableOpacity
+                  style={[styles.cancelButton, { borderColor: theme.border }]}
+                  onPress={() => {
+                    setShowBudgetModal(false);
+                    setBudgetInput("");
+                  }}
+                >
+                  <Text
+                    style={[
+                      styles.cancelButtonText,
+                      { color: theme.textSecondary },
+                    ]}
+                  >
+                    Cancel
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.addButton,
+                    { backgroundColor: theme.accent },
+                    !budgetInput.trim() && styles.addButtonDisabled,
+                  ]}
+                  onPress={handleBudgetSubmit}
+                  disabled={!budgetInput.trim()}
+                >
+                  <Text style={styles.addButtonText}>Set Budget</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -726,84 +1021,87 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerSection: {
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
+    paddingTop: Math.max(50, width * 0.13),
+    paddingBottom: Math.max(32, width * 0.08),
+    paddingHorizontal: Math.max(20, width * 0.05),
+    borderBottomLeftRadius: Math.max(24, width * 0.06),
+    borderBottomRightRadius: Math.max(24, width * 0.06),
   },
   headerContent: {
     alignItems: "center",
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: Math.max(24, width * 0.065),
     fontWeight: "800",
     color: "white",
-    marginTop: 12,
-    marginBottom: 4,
+    marginTop: Math.max(10, width * 0.025),
+    marginBottom: Math.max(4, width * 0.01),
     letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 16,
+    fontSize: Math.max(14, width * 0.035),
     color: "rgba(255, 255, 255, 0.8)",
     fontWeight: "500",
   },
   content: {
-    padding: 24,
-    marginTop: -20,
+    padding: Math.max(20, width * 0.05),
+    marginTop: Math.max(-16, -width * 0.04),
   },
   quickActionsGrid: {
     flexDirection: "row",
-    gap: 16,
-    marginBottom: 32,
+    gap: Math.max(12, width * 0.03),
+    marginBottom: Math.max(28, width * 0.07),
   },
   quickActionCard: {
     flex: 1,
-    padding: 20,
-    borderRadius: 20,
+    padding: Math.max(16, width * 0.04),
+    borderRadius: Math.max(16, width * 0.04),
     alignItems: "center",
     borderWidth: 0,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
+    minHeight: Math.max(100, width * 0.25), // Consistent height
   },
   quickActionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: Math.max(48, width * 0.12),
+    height: Math.max(48, width * 0.12),
+    borderRadius: Math.max(24, width * 0.06),
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: Math.max(10, width * 0.025),
   },
   quickActionTitle: {
-    fontSize: 16,
+    fontSize: Math.max(14, width * 0.035),
     fontWeight: "700",
-    marginBottom: 4,
-  },
-  quickActionValue: {
-    fontSize: 14,
-    fontWeight: "500",
+    marginBottom: Math.max(3, width * 0.008),
     textAlign: "center",
   },
+  quickActionValue: {
+    fontSize: Math.max(12, width * 0.03),
+    fontWeight: "500",
+    textAlign: "center",
+    lineHeight: Math.max(16, width * 0.04),
+  },
   section: {
-    marginBottom: 28,
+    marginBottom: Math.max(24, width * 0.06),
   },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: Math.max(14, width * 0.035),
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: Math.max(18, width * 0.045),
     fontWeight: "700",
-    marginLeft: 12,
+    marginLeft: Math.max(10, width * 0.025),
     letterSpacing: 0.3,
   },
   settingsGroup: {
-    borderRadius: 20,
+    borderRadius: Math.max(16, width * 0.04),
     borderWidth: 0,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
@@ -813,8 +1111,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 20,
-    borderBottomWidth: 1,
+    padding: Math.max(16, width * 0.04),
+    borderBottomWidth: 0.5,
+    minHeight: Math.max(60, width * 0.15), // Consistent row height
   },
   settingLeft: {
     flexDirection: "row",
@@ -822,24 +1121,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: Math.max(36, width * 0.09),
+    height: Math.max(36, width * 0.09),
+    borderRadius: Math.max(18, width * 0.045),
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: Math.max(12, width * 0.03),
   },
   settingText: {
     flex: 1,
   },
   settingTitle: {
-    fontSize: 17,
+    fontSize: Math.max(15, width * 0.04),
     fontWeight: "700",
-    marginBottom: 3,
+    marginBottom: Math.max(2, width * 0.005),
     letterSpacing: 0.3,
   },
   settingSubtitle: {
-    fontSize: 15,
+    fontSize: Math.max(13, width * 0.032),
     fontWeight: "500",
   },
   settingRight: {
@@ -847,9 +1146,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   aboutCard: {
-    borderRadius: 20,
+    borderRadius: Math.max(16, width * 0.04),
     borderWidth: 0,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
@@ -858,50 +1157,50 @@ const styles = StyleSheet.create({
   aboutContent: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 24,
+    padding: Math.max(20, width * 0.05),
   },
   appIconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: Math.max(56, width * 0.14),
+    height: Math.max(56, width * 0.14),
+    borderRadius: Math.max(28, width * 0.07),
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 20,
+    marginRight: Math.max(16, width * 0.04),
   },
   aboutTextContainer: {
     flex: 1,
   },
   appName: {
-    fontSize: 20,
+    fontSize: Math.max(18, width * 0.045),
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: Math.max(3, width * 0.008),
     letterSpacing: -0.3,
   },
   appVersion: {
-    fontSize: 16,
+    fontSize: Math.max(14, width * 0.035),
     fontWeight: "500",
-    marginBottom: 2,
+    marginBottom: Math.max(2, width * 0.005),
   },
   appDeveloper: {
-    fontSize: 14,
+    fontSize: Math.max(12, width * 0.03),
     fontWeight: "500",
   },
   statsContainer: {
-    borderTopWidth: 1,
-    paddingVertical: 20,
-    paddingHorizontal: 24,
+    borderTopWidth: 0.5,
+    paddingVertical: Math.max(16, width * 0.04),
+    paddingHorizontal: Math.max(20, width * 0.05),
     alignItems: "center",
   },
   statItem: {
     alignItems: "center",
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: Math.max(20, width * 0.05),
     fontWeight: "800",
-    marginBottom: 4,
+    marginBottom: Math.max(3, width * 0.008),
   },
   statLabel: {
-    fontSize: 14,
+    fontSize: Math.max(12, width * 0.03),
     fontWeight: "500",
   },
   // Modal styles
@@ -910,109 +1209,117 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modalContainer: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: Math.max(20, width * 0.05),
+    borderTopRightRadius: Math.max(20, width * 0.05),
     maxHeight: "80%",
-    paddingBottom: 20,
+    paddingBottom: Math.max(20, width * 0.05),
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 20,
-    borderBottomWidth: 1,
+    padding: Math.max(18, width * 0.045),
+    borderBottomWidth: 0.5,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: "600",
+    fontSize: Math.max(18, width * 0.045),
+    fontWeight: "700",
   },
   closeButton: {
-    padding: 4,
+    padding: Math.max(8, width * 0.02),
   },
   categoryItem: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
-    marginHorizontal: 20,
+    padding: Math.max(14, width * 0.035),
+    marginHorizontal: Math.max(16, width * 0.04),
     marginVertical: 2,
-    borderRadius: 12,
+    borderRadius: Math.max(10, width * 0.025),
     backgroundColor: "#f8f9fa",
+    minHeight: Math.max(48, width * 0.12),
   },
   selectedCategoryItem: {
     backgroundColor: "#e3f2fd",
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: "#007AFF",
   },
   categoryText: {
-    fontSize: 16,
+    fontSize: Math.max(15, width * 0.038),
     flex: 1,
+    fontWeight: "500",
   },
   selectedCategoryText: {
-    fontWeight: "600",
+    fontWeight: "700",
   },
   customCategoryButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    padding: 16,
-    margin: 20,
-    borderRadius: 12,
-    borderWidth: 2,
+    padding: Math.max(14, width * 0.035),
+    margin: Math.max(16, width * 0.04),
+    borderRadius: Math.max(10, width * 0.025),
+    borderWidth: 1.5,
     borderColor: "#007AFF",
     borderStyle: "dashed",
     backgroundColor: "transparent",
+    minHeight: Math.max(48, width * 0.12),
   },
   customCategoryText: {
-    fontSize: 16,
+    fontSize: Math.max(15, width * 0.038),
     color: "#007AFF",
-    fontWeight: "600",
-    marginLeft: 8,
+    fontWeight: "700",
+    marginLeft: Math.max(6, width * 0.015),
   },
   customInputContainer: {
-    padding: 20,
+    padding: Math.max(20, width * 0.05),
   },
   customInputLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 12,
+    fontSize: Math.max(15, width * 0.038),
+    fontWeight: "700",
+    marginBottom: Math.max(10, width * 0.025),
   },
   customTextInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 20,
+    borderWidth: 1.5,
+    borderRadius: Math.max(10, width * 0.025),
+    padding: Math.max(14, width * 0.035),
+    fontSize: Math.max(15, width * 0.038),
+    marginBottom: Math.max(16, width * 0.04),
+    minHeight: Math.max(48, width * 0.12),
   },
   customInputButtons: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 12,
+    gap: Math.max(10, width * 0.025),
   },
   cancelButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
+    padding: Math.max(14, width * 0.035),
+    borderRadius: Math.max(10, width * 0.025),
+    borderWidth: 1.5,
     alignItems: "center",
+    minHeight: Math.max(48, width * 0.12),
+    justifyContent: "center",
   },
   cancelButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
+    fontSize: Math.max(15, width * 0.038),
+    fontWeight: "700",
   },
   addButton: {
     flex: 1,
-    padding: 16,
-    borderRadius: 12,
+    padding: Math.max(14, width * 0.035),
+    borderRadius: Math.max(10, width * 0.025),
     alignItems: "center",
+    minHeight: Math.max(48, width * 0.12),
+    justifyContent: "center",
   },
   addButtonDisabled: {
     backgroundColor: "#ccc",
   },
   addButtonText: {
-    fontSize: 16,
+    fontSize: Math.max(15, width * 0.038),
     color: "white",
-    fontWeight: "600",
+    fontWeight: "700",
   },
   keyboardAvoidingView: {
     flex: 1,

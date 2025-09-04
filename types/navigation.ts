@@ -8,6 +8,11 @@ export type ExpensesStackParamList = {
   EditExpense: { expense: Expense };
 };
 
+export type SettingsStackParamList = {
+  SettingsList: undefined;
+  CurrencySelection: undefined;
+};
+
 export type TabParamList = {
   Home: undefined;
   Add: undefined;
@@ -29,4 +34,14 @@ export type ExpenseDetailsScreenNavigationProp = StackNavigationProp<
 export type EditExpenseScreenNavigationProp = StackNavigationProp<
   ExpensesStackParamList,
   'EditExpense'
+>;
+
+export type SettingsScreenNavigationProp = StackNavigationProp<
+  SettingsStackParamList,
+  'SettingsList'
+>;
+
+export type CurrencySelectionScreenNavigationProp = StackNavigationProp<
+  SettingsStackParamList,
+  'CurrencySelection'
 >;

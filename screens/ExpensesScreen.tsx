@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  Dimensions,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
@@ -19,6 +20,8 @@ import { Expense } from "../services/DatabaseService";
 import { settingsService } from "../services/SettingsService";
 import { ExpensesScreenNavigationProp } from "../types/navigation";
 import { getTheme } from "../utils/themes";
+
+const { width } = Dimensions.get("window");
 
 const ExpensesScreen: React.FC = () => {
   const navigation = useNavigation<ExpensesScreenNavigationProp>();
@@ -416,10 +419,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: Constants.statusBarHeight + 20,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
+    paddingHorizontal: Math.max(16, width * 0.04),
+    paddingTop: Constants.statusBarHeight + Math.max(16, width * 0.04),
+    paddingBottom: Math.max(12, width * 0.03),
+    borderBottomWidth: 0.5,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -429,52 +432,54 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: Math.max(10, width * 0.025),
   },
   headerTitle: {
-    fontSize: 32,
+    fontSize: Math.max(28, width * 0.075), // Responsive font size
     fontWeight: "800",
     letterSpacing: -0.5,
   },
   searchButton: {
-    padding: 8,
+    padding: Math.max(8, width * 0.02),
   },
   searchContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: Math.max(10, width * 0.025),
   },
   searchInput: {
     flex: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 16,
+    borderRadius: Math.max(8, width * 0.02),
+    paddingHorizontal: Math.max(12, width * 0.03),
+    paddingVertical: Math.max(8, width * 0.02),
+    fontSize: Math.max(15, width * 0.04),
     borderWidth: 1,
+    minHeight: Math.max(40, width * 0.1),
   },
   clearSearch: {
-    padding: 8,
-    marginLeft: 8,
+    padding: Math.max(8, width * 0.02),
+    marginLeft: Math.max(8, width * 0.02),
   },
   summaryContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 8,
+    paddingVertical: Math.max(8, width * 0.02),
   },
   summaryText: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: Math.max(16, width * 0.042),
+    fontWeight: "700",
   },
   countText: {
-    fontSize: 14,
+    fontSize: Math.max(13, width * 0.032),
+    fontWeight: "500",
   },
   expenseItem: {
-    marginHorizontal: 20,
-    marginVertical: 8,
-    borderRadius: 20,
+    marginHorizontal: Math.max(16, width * 0.04),
+    marginVertical: Math.max(6, width * 0.015),
+    borderRadius: Math.max(16, width * 0.04),
     borderWidth: 0,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
@@ -482,65 +487,71 @@ const styles = StyleSheet.create({
   expenseContent: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 20,
+    padding: Math.max(16, width * 0.04),
   },
   categoryIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: Math.max(44, width * 0.11),
+    height: Math.max(44, width * 0.11),
+    borderRadius: Math.max(22, width * 0.055),
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    marginRight: Math.max(14, width * 0.035),
   },
   expenseDetails: {
     flex: 1,
+    justifyContent: "center",
   },
   expenseTitle: {
-    fontSize: 18,
+    fontSize: Math.max(16, width * 0.042),
     fontWeight: "700",
-    marginBottom: 4,
+    marginBottom: Math.max(3, width * 0.008),
+    lineHeight: Math.max(20, width * 0.05),
   },
   expenseCategory: {
-    fontSize: 15,
-    marginBottom: 2,
+    fontSize: Math.max(14, width * 0.035),
+    marginBottom: Math.max(2, width * 0.005),
     fontWeight: "500",
   },
   expenseDate: {
-    fontSize: 13,
+    fontSize: Math.max(12, width * 0.03),
     fontWeight: "500",
   },
   expenseAmount: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "flex-end",
+    minWidth: width * 0.2, // Consistent width for amounts
   },
   amountText: {
-    fontSize: 18,
+    fontSize: Math.max(16, width * 0.042),
     fontWeight: "800",
-    marginRight: 8,
+    marginRight: Math.max(6, width * 0.015),
+    textAlign: "right",
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 40,
+    paddingHorizontal: Math.max(32, width * 0.08),
   },
   emptyList: {
     flex: 1,
   },
   emptyTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: Math.max(18, width * 0.045),
+    fontWeight: "700",
+    marginTop: Math.max(16, width * 0.04),
+    marginBottom: Math.max(8, width * 0.02),
+    textAlign: "center",
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: Math.max(15, width * 0.038),
     textAlign: "center",
-    lineHeight: 22,
+    lineHeight: Math.max(20, width * 0.05),
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: Math.max(12, width * 0.03),
+    fontSize: Math.max(15, width * 0.038),
   },
 });
 

@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { StackNavigationProp } from "@react-navigation/stack";
@@ -15,6 +16,8 @@ import { useApp } from "../context/AppContext";
 import { Expense } from "../services/DatabaseService";
 import { settingsService } from "../services/SettingsService";
 import { getTheme } from "../utils/themes";
+
+const { width } = Dimensions.get("window");
 
 type RootStackParamList = {
   ExpenseDetails: { expenseId: number };
@@ -347,25 +350,25 @@ const styles = StyleSheet.create({
   customHeader: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 20,
+    paddingHorizontal: Math.max(20, width * 0.05),
+    paddingTop: Math.max(50, width * 0.13),
+    paddingBottom: Math.max(16, width * 0.04),
     borderBottomWidth: 0,
   },
   backButton: {
-    padding: 8,
-    borderRadius: 12,
+    padding: Math.max(8, width * 0.02),
+    borderRadius: Math.max(10, width * 0.025),
   },
   headerTitle: {
     flex: 1,
-    fontSize: 20,
+    fontSize: Math.max(18, width * 0.045),
     fontWeight: "800",
     textAlign: "center",
-    marginRight: 40, // Compensate for back button width
+    marginRight: Math.max(32, width * 0.08), // Compensate for back button width
     letterSpacing: -0.3,
   },
   headerSpacer: {
-    width: 40, // Same as back button width for centering
+    width: Math.max(32, width * 0.08), // Same as back button width for centering
   },
   scrollContainer: {
     flex: 1,
@@ -375,34 +378,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   content: {
-    padding: 24,
+    padding: Math.max(20, width * 0.05),
   },
   header: {
-    padding: 32,
-    borderRadius: 24,
-    marginBottom: 24,
+    padding: Math.max(24, width * 0.06),
+    borderRadius: Math.max(20, width * 0.05),
+    marginBottom: Math.max(20, width * 0.05),
     borderWidth: 0,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 16,
+    shadowRadius: 12,
     elevation: 6,
   },
   title: {
-    fontSize: 28,
+    fontSize: Math.max(24, width * 0.06),
     fontWeight: "800",
-    marginBottom: 12,
+    marginBottom: Math.max(10, width * 0.025),
     letterSpacing: -0.5,
   },
   amount: {
-    fontSize: 36,
+    fontSize: Math.max(32, width * 0.08),
     fontWeight: "900",
   },
   detailsContainer: {
-    padding: 24,
-    borderRadius: 20,
-    marginBottom: 24,
+    padding: Math.max(20, width * 0.05),
+    borderRadius: Math.max(16, width * 0.04),
+    marginBottom: Math.max(20, width * 0.05),
     borderWidth: 0,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,
@@ -411,18 +414,18 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: Math.max(16, width * 0.04),
   },
   detailColumn: {
-    marginBottom: 20,
+    marginBottom: Math.max(16, width * 0.04),
   },
   label: {
-    fontSize: 17,
+    fontSize: Math.max(15, width * 0.04),
     fontWeight: "700",
     letterSpacing: 0.3,
   },
   value: {
-    fontSize: 17,
+    fontSize: Math.max(15, width * 0.04),
     fontWeight: "500",
   },
   categoryContainer: {
@@ -430,47 +433,48 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   categoryIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: Math.max(28, width * 0.07),
+    height: Math.max(28, width * 0.07),
+    borderRadius: Math.max(14, width * 0.035),
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: Math.max(10, width * 0.025),
   },
   categoryTag: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: Math.max(12, width * 0.03),
+    paddingVertical: Math.max(6, width * 0.015),
+    borderRadius: Math.max(16, width * 0.04),
   },
   categoryText: {
     color: "white",
-    fontSize: 15,
+    fontSize: Math.max(13, width * 0.033),
     fontWeight: "700",
   },
   description: {
-    fontSize: 17,
-    marginTop: 12,
-    lineHeight: 26,
+    fontSize: Math.max(15, width * 0.04),
+    marginTop: Math.max(10, width * 0.025),
+    lineHeight: Math.max(22, width * 0.055),
     fontWeight: "400",
   },
   actionsContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: 24,
-    gap: 16,
+    marginTop: Math.max(20, width * 0.05),
+    gap: Math.max(12, width * 0.03),
   },
   actionButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 28,
-    borderRadius: 20,
+    paddingVertical: Math.max(14, width * 0.035),
+    paddingHorizontal: Math.max(20, width * 0.05),
+    borderRadius: Math.max(16, width * 0.04),
     flex: 1,
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 4,
+    minHeight: Math.max(48, width * 0.12),
   },
   editButton: {
     backgroundColor: "#007AFF",
@@ -480,32 +484,34 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     color: "white",
-    fontSize: 17,
+    fontSize: Math.max(15, width * 0.04),
     fontWeight: "700",
-    marginLeft: 8,
+    marginLeft: Math.max(6, width * 0.015),
   },
   button: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 20,
-    marginTop: 24,
-    shadowOffset: { width: 0, height: 4 },
+    paddingVertical: Math.max(14, width * 0.035),
+    paddingHorizontal: Math.max(24, width * 0.06),
+    borderRadius: Math.max(16, width * 0.04),
+    marginTop: Math.max(20, width * 0.05),
+    shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
     elevation: 4,
+    minHeight: Math.max(48, width * 0.12),
+    justifyContent: "center",
   },
   buttonText: {
     color: "white",
-    fontSize: 17,
+    fontSize: Math.max(15, width * 0.04),
     fontWeight: "700",
     textAlign: "center",
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 16,
+    marginTop: Math.max(10, width * 0.025),
+    fontSize: Math.max(14, width * 0.037),
   },
   errorText: {
-    fontSize: 18,
+    fontSize: Math.max(16, width * 0.042),
     textAlign: "center",
   },
 });

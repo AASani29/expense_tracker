@@ -21,10 +21,14 @@ class DatabaseService {
 
   async initializeDatabase(): Promise<void> {
     try {
-      this.db = await SQLite.openDatabaseAsync('expenses.db');
+      console.log('Initializing database with sync API...');
+      
+      // Use the sync API for better compatibility in Expo Go
+      this.db = SQLite.openDatabaseSync('expenses.db');
+      console.log('Database opened successfully');
       
       // Create the expenses table with all required columns
-      await this.db.execAsync(`
+      this.db.execSync(`
         CREATE TABLE IF NOT EXISTS expenses (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT NOT NULL,
@@ -32,12 +36,33 @@ class DatabaseService {
           category TEXT NOT NULL,
           date TEXT NOT NULL,
           description TEXT,
-          created_at DATETIME DEFAULT (datetime('now'))
+          created_at DATETIME DEFAULT (datetime('now','localtime'))
         );
       `);
       
+      console.log('Table created/verified successfully');
+      
       // Check if created_at column exists and add it if it doesn't
-      await this.ensureCreatedAtColumn();
+      try {
+        const result = this.db.getFirstSync(
+          "SELECT name FROM sqlite_master WHERE type='table' AND name='expenses'"
+        );
+        if (result) {
+          // Check if created_at column exists
+          const columns = this.db.getAllSync("PRAGMA table_info(expenses)");
+          const hasCreatedAt = columns.some((col: any) => col.name === 'created_at');
+          
+          if (!hasCreatedAt) {
+            console.log('Adding created_at column...');
+            this.db.execSync(`
+              ALTER TABLE expenses ADD COLUMN created_at DATETIME DEFAULT (datetime('now','localtime'));
+            `);
+            console.log('created_at column added');
+          }
+        }
+      } catch (error) {
+        console.log('created_at column already exists or error checking:', error);
+      }
       
       console.log('Database initialized successfully');
     } catch (error) {
@@ -46,12 +71,12 @@ class DatabaseService {
     }
   }
 
-  private async ensureCreatedAtColumn(): Promise<void> {
+  private ensureCreatedAtColumn(): void {
     if (!this.db) return;
     
     try {
       // Check if created_at column exists
-      const tableInfo = await this.db.getAllAsync(
+      const tableInfo = this.db.getAllSync(
         "PRAGMA table_info(expenses)"
       ) as { name: string }[];
       
@@ -61,12 +86,12 @@ class DatabaseService {
         console.log('Adding created_at column to expenses table');
         
         // Add column without default value first
-        await this.db.execAsync(`
+        this.db.execSync(`
           ALTER TABLE expenses ADD COLUMN created_at DATETIME;
         `);
         
         // Update existing records to have created_at values using datetime('now')
-        await this.db.execAsync(`
+        this.db.execSync(`
           UPDATE expenses SET created_at = datetime('now') WHERE created_at IS NULL;
         `);
         
@@ -77,7 +102,7 @@ class DatabaseService {
       // If column addition fails, try a complete table recreation as fallback
       try {
         console.log('Attempting table recreation...');
-        await this.recreateTableWithCreatedAt();
+        this.recreateTableWithCreatedAt();
       } catch (recreateError) {
         console.error('Error recreating table:', recreateError);
         // Don't throw here as this is a migration step
@@ -85,20 +110,20 @@ class DatabaseService {
     }
   }
 
-  private async recreateTableWithCreatedAt(): Promise<void> {
+  private recreateTableWithCreatedAt(): void {
     if (!this.db) return;
     
     // Backup existing data
-    const existingData = await this.db.getAllAsync('SELECT * FROM expenses') as any[];
+    const existingData = this.db.getAllSync('SELECT * FROM expenses') as any[];
     
     // Drop and recreate table
-    await this.db.execAsync('DROP TABLE IF EXISTS expenses_backup');
-    await this.db.execAsync(`
+    this.db.execSync('DROP TABLE IF EXISTS expenses_backup');
+    this.db.execSync(`
       CREATE TABLE expenses_backup AS SELECT * FROM expenses;
     `);
     
-    await this.db.execAsync('DROP TABLE expenses');
-    await this.db.execAsync(`
+    this.db.execSync('DROP TABLE expenses');
+    this.db.execSync(`
       CREATE TABLE expenses (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -113,7 +138,7 @@ class DatabaseService {
     // Restore data with created_at
     if (existingData.length > 0) {
       for (const expense of existingData) {
-        await this.db.runAsync(`
+        this.db.runSync(`
           INSERT INTO expenses (id, title, amount, category, date, description, created_at)
           VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [
@@ -129,35 +154,39 @@ class DatabaseService {
     }
     
     // Clean up backup
-    await this.db.execAsync('DROP TABLE IF EXISTS expenses_backup');
+    this.db.execSync('DROP TABLE IF EXISTS expenses_backup');
     console.log('Table recreated successfully with created_at column');
   }
 
-  async addExpense(expense: Omit<Expense, 'id' | 'created_at'>): Promise<number> {
+  addExpense(expense: Omit<Expense, 'id' | 'created_at'>): number {
     if (!this.db) {
-      throw new Error('Database not initialized');
+      console.error('Database not initialized, attempting to reinitialize...');
+      throw new Error('Database not initialized. Call initializeDatabase() first.');
     }
 
     try {
-      const result = await this.db.runAsync(
+      console.log('Adding expense:', expense);
+      const result = this.db.runSync(
         'INSERT INTO expenses (title, amount, category, date, description) VALUES (?, ?, ?, ?, ?)',
         [expense.title, expense.amount, expense.category, expense.date, expense.description || '']
       );
       
-      return result.lastInsertRowId;
+      console.log('Expense added successfully with ID:', result.lastInsertRowId);
+      return result.lastInsertRowId as number;
     } catch (error) {
       console.error('Error adding expense:', error);
+      console.error('Expense data:', expense);
       throw error;
     }
   }
 
-  async getAllExpenses(): Promise<Expense[]> {
+  getAllExpenses(): Expense[] {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
-      const result = await this.db.getAllAsync(
+      const result = this.db.getAllSync(
         'SELECT * FROM expenses ORDER BY date DESC, id DESC'
       );
       
@@ -168,13 +197,13 @@ class DatabaseService {
     }
   }
 
-  async getExpenseById(id: number): Promise<Expense | null> {
+  getExpenseById(id: number): Expense | null {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
-      const result = await this.db.getFirstAsync(
+      const result = this.db.getFirstSync(
         'SELECT * FROM expenses WHERE id = ?',
         [id]
       );
@@ -186,13 +215,13 @@ class DatabaseService {
     }
   }
 
-  async updateExpense(id: number, expense: Omit<Expense, 'id' | 'created_at'>): Promise<void> {
+  updateExpense(id: number, expense: Omit<Expense, 'id' | 'created_at'>): void {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
-      await this.db.runAsync(
+      this.db.runSync(
         'UPDATE expenses SET title = ?, amount = ?, category = ?, date = ?, description = ? WHERE id = ?',
         [expense.title, expense.amount, expense.category, expense.date, expense.description || '', id]
       );
@@ -202,26 +231,26 @@ class DatabaseService {
     }
   }
 
-  async deleteExpense(id: number): Promise<void> {
+  deleteExpense(id: number): void {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
-      await this.db.runAsync('DELETE FROM expenses WHERE id = ?', [id]);
+      this.db.runSync('DELETE FROM expenses WHERE id = ?', [id]);
     } catch (error) {
       console.error('Error deleting expense:', error);
       throw error;
     }
   }
 
-  async searchExpenses(query: string): Promise<Expense[]> {
+  searchExpenses(query: string): Expense[] {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
-      const result = await this.db.getAllAsync(
+      const result = this.db.getAllSync(
         'SELECT * FROM expenses WHERE title LIKE ? OR description LIKE ? OR category LIKE ? ORDER BY date DESC',
         [`%${query}%`, `%${query}%`, `%${query}%`]
       );
@@ -233,24 +262,24 @@ class DatabaseService {
     }
   }
 
-  async getExpenseStats(): Promise<ExpenseStats> {
+  getExpenseStats(): ExpenseStats {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
       // Total expenses
-      const totalResult = await this.db.getFirstAsync(
+      const totalResult = this.db.getFirstSync(
         'SELECT SUM(amount) as total FROM expenses'
       ) as { total: number };
 
       // Category sums
-      const categoryResult = await this.db.getAllAsync(
+      const categoryResult = this.db.getAllSync(
         'SELECT category, SUM(amount) as total FROM expenses GROUP BY category ORDER BY total DESC'
       ) as { category: string; total: number }[];
 
       // Monthly data
-      const monthlyResult = await this.db.getAllAsync(
+      const monthlyResult = this.db.getAllSync(
         `SELECT 
           strftime('%Y-%m', date) as month,
           SUM(amount) as total 
@@ -276,38 +305,28 @@ class DatabaseService {
     }
   }
 
-  async clearAllData(): Promise<void> {
+  clearAllData(): void {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
-      await this.db.runAsync('DELETE FROM expenses');
+      this.db.runSync('DELETE FROM expenses');
     } catch (error) {
       console.error('Error clearing all data:', error);
       throw error;
     }
   }
 
-  async resetDatabase(): Promise<void> {
-    if (!this.db) {
-      throw new Error('Database not initialized');
-    }
-
+  resetDatabase(): void {
     try {
-      // Drop the table and recreate it with proper schema
-      await this.db.execAsync('DROP TABLE IF EXISTS expenses');
-      await this.db.execAsync(`
-        CREATE TABLE expenses (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT NOT NULL,
-          amount REAL NOT NULL,
-          category TEXT NOT NULL,
-          date TEXT NOT NULL,
-          description TEXT,
-          created_at DATETIME DEFAULT (datetime('now'))
-        );
-      `);
+      console.log('Resetting database...');
+      
+      if (this.db) {
+        this.db.closeSync();
+        this.db = null;
+      }
+      
       console.log('Database reset successfully');
     } catch (error) {
       console.error('Error resetting database:', error);
@@ -315,13 +334,13 @@ class DatabaseService {
     }
   }
 
-  async getExpensesByDateRange(startDate: string, endDate: string): Promise<Expense[]> {
+  getExpensesByDateRange(startDate: string, endDate: string): Expense[] {
     if (!this.db) {
       throw new Error('Database not initialized');
     }
 
     try {
-      const result = await this.db.getAllAsync(
+      const result = this.db.getAllSync(
         'SELECT * FROM expenses WHERE date BETWEEN ? AND ? ORDER BY date DESC',
         [startDate, endDate]
       );
